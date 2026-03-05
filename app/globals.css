@@ -3,6 +3,21 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --color-bg:         #0d0a07;
+  --color-text:       #e8dcc8;
+  --color-text-muted: #8a7560;
+  --color-text-dim:   #6b5a3e;
+  --color-gold:       #c9a84c;
+  --color-gold-dark:  #8b6914;
+  --color-red:        #8b1a1a;
+  --color-red-dark:   #6b1212;
+  --color-border:     rgba(201, 168, 76, 0.2);
+  --color-card:       rgba(255, 255, 255, 0.02);
+  --color-card-hover: rgba(139, 26, 26, 0.08);
+
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Georgia', 'Times New Roman', serif;
 }
 
 @theme inline {
