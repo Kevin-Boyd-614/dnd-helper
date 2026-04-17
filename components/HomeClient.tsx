@@ -177,6 +177,7 @@ export default function HomeClient({ campaigns, stats }: Props) {
             letterSpacing: "0.15em",
             textTransform: "uppercase",
           }}
+            onClick={() => router.push('/campaigns/new')}
             onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.5)"; e.currentTarget.style.color = "var(--color-gold-dark)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.color = "var(--color-text-dim)"; }}
           >
