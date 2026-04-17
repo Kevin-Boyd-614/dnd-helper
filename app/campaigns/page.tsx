@@ -1,11 +1,15 @@
 import { supabase } from '@/lib/supabase'
 import { Campaign } from '@/lib/types'
 import CampaignsClient from './CampaignsClient'
+import { getSession } from '@/lib/auth'
 
 export default async function CampaignsPage() {
+  const session = await getSession()
+
   const { data: rawCampaigns } = await supabase
     .from('campaigns')
     .select('id, name, setting, description, player_count, created_at')
+    .eq('user_id', session!.userId)
     .order('created_at', { ascending: false })
 
   const { data: chapterCounts } = await supabase

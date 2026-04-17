@@ -28,10 +28,22 @@ export interface Monster {
   id: string
   name: string
   type?: string
-  cr?: number
+  cr?: string
   hp?: number
   ac?: number
+  speed?: string
   notes?: string
+}
+
+export interface MonsterSkill {
+  id: string
+  monster_id: string
+  name: string
+  description?: string
+  damage?: string
+  damage_type?: string
+  range?: string
+  cooldown?: number
 }
 
 export interface Encounter {
@@ -39,5 +51,14 @@ export interface Encounter {
   dungeon_id: string
   name: string
   notes?: string
-  status: 'planned' | 'completed'
+  status: 'planned' | 'active' | 'completed'
+}
+
+export interface EncounterMonster {
+  id: string
+  encounter_id: string
+  monster_id: string
+  current_hp: number
+  initiative: number | null
+  monster: Monster
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { Campaign } from "@/lib/types";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface Props {
@@ -131,7 +131,7 @@ export default function HomeClient({ campaigns, stats }: Props) {
             ✦ Active Campaigns
           </h2>
           <div style={{ height: "1px", flex: 1, margin: "0 16px", background: "var(--color-border)" }} />
-          <a href="#" style={{ fontSize: "12px", color: "var(--color-text-dim)", textDecoration: "none", letterSpacing: "0.1em" }}>View all →</a>
+          <a href={`/campaigns`}  style={{ fontSize: "12px", color: "var(--color-text-dim)", textDecoration: "none", letterSpacing: "0.1em" }}>View all →</a>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
@@ -139,6 +139,7 @@ export default function HomeClient({ campaigns, stats }: Props) {
             <div key={c.id}
               onMouseEnter={() => setHovered(c.id)}
               onMouseLeave={() => setHovered(null)}
+              onClick={() => router.push(`campaigns/${c.id.toLowerCase()}`)}
               style={{
                 background: hovered === c.id ? "var(--color-card-hover)" : "var(--color-card)",
                 border: `1px solid ${hovered === c.id ? "rgba(201,168,76,0.4)" : "var(--color-border)"}`,

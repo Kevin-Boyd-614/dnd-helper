@@ -1,6 +1,6 @@
 "use client"
 
-import { Campaign, Chapter, Dungeon } from '@/lib/types'
+import { Campaign, Chapter, Dungeon, Encounter } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -9,6 +9,7 @@ interface Props {
   campaign: Campaign
   chapters: Chapter[]
   dungeons: Dungeon[]
+  encounters: Encounter[]
 }
 
 const inputStyle = {
@@ -33,7 +34,7 @@ const labelStyle = {
   marginBottom: "6px",
 }
 
-export default function CampaignClient({ campaign, chapters: initialChapters, dungeons: initialDungeons }: Props) {
+export default function CampaignClient({ campaign, chapters: initialChapters, dungeons: initialDungeons, encounters: initialEncounters }: Props) {
   const router = useRouter()
 
   // Campaign edit state
@@ -46,10 +47,12 @@ export default function CampaignClient({ campaign, chapters: initialChapters, du
     player_count: campaign.player_count?.toString() ?? '',
   })
 
-  // Chapters + dungeons state
+  // Chapters + dungeons + encounters state
   const [chapters, setChapters] = useState(initialChapters)
   const [dungeons, setDungeons] = useState(initialDungeons)
+  const [encounters, setEncounters] = useState(initialEncounters)
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null)
+  const [expandedDungeon, setExpandedDungeon] = useState<string | null>(null)
 
   // New chapter state
   const [addingChapter, setAddingChapter] = useState(false)
@@ -60,6 +63,11 @@ export default function CampaignClient({ campaign, chapters: initialChapters, du
   const [addingDungeonTo, setAddingDungeonTo] = useState<string | null>(null)
   const [newDungeonName, setNewDungeonName] = useState('')
   const [savingDungeon, setSavingDungeon] = useState(false)
+
+  // New encounter state
+  const [addingEncounterTo, setAddingEncounterTo] = useState<string | null>(null)
+  const [newEncounterName, setNewEncounterName] = useState('')
+  const [savingEncounter, setSavingEncounter] = useState(false)
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -106,8 +114,26 @@ export default function CampaignClient({ campaign, chapters: initialChapters, du
     setSavingDungeon(false)
   }
 
+  async function handleAddEncounter(dungeonId: string) {
+    if (!newEncounterName.trim()) return
+    setSavingEncounter(true)
+    const { data } = await supabase.from('encounters').insert({
+      name: newEncounterName.trim(),
+      dungeon_id: dungeonId,
+      status: 'planned',
+    }).select().single()
+    if (data) setEncounters(prev => [...prev, data as Encounter])
+    setNewEncounterName('')
+    setAddingEncounterTo(null)
+    setSavingEncounter(false)
+  }
+
   function getDungeonsForChapter(chapterId: string) {
     return dungeons.filter(d => d.chapter_id === chapterId)
+  }
+
+  function getEncountersForDungeon(dungeonId: string) {
+    return encounters.filter(e => e.dungeon_id === dungeonId)
   }
 
   return (
@@ -346,18 +372,133 @@ export default function CampaignClient({ campaign, chapters: initialChapters, du
                   }}>
                     {/* Dungeon list */}
                     {chapterDungeons.length > 0 && (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-                        {chapterDungeons.map(dungeon => (
-                          <div key={dungeon.id} style={{
-                            padding: "12px 16px",
-                            border: "1px solid var(--color-border)",
-                            background: "var(--color-card)",
-                            display: "flex", alignItems: "center", gap: "12px",
-                          }}>
-                            <span style={{ color: "var(--color-gold)", fontSize: "12px" }}>⚔</span>
-                            <span style={{ fontSize: "15px", color: "var(--color-text)" }}>{dungeon.name}</span>
-                          </div>
-                        ))}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "16px" }}>
+                        {chapterDungeons.map(dungeon => {
+                          const isDungeonExpanded = expandedDungeon === dungeon.id
+                          const dungeonEncounters = getEncountersForDungeon(dungeon.id)
+
+                          return (
+                            <div key={dungeon.id} style={{
+                              border: `1px solid ${isDungeonExpanded ? "rgba(201,168,76,0.3)" : "var(--color-border)"}`,
+                              transition: "border-color 0.2s",
+                            }}>
+                              {/* Dungeon header */}
+                              <div
+                                onClick={e => { e.stopPropagation(); setExpandedDungeon(isDungeonExpanded ? null : dungeon.id); }}
+                                style={{
+                                  padding: "12px 16px",
+                                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                                  cursor: "pointer",
+                                  background: isDungeonExpanded ? "rgba(201,168,76,0.04)" : "var(--color-card)",
+                                  transition: "background 0.2s",
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                  <span style={{ color: "var(--color-gold)", fontSize: "12px" }}>⚔</span>
+                                  <span style={{ fontSize: "15px", color: "var(--color-text)" }}>{dungeon.name}</span>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                  <span style={{ fontSize: "11px", color: "var(--color-text-dim)", letterSpacing: "0.1em" }}>
+                                    {dungeonEncounters.length} {dungeonEncounters.length === 1 ? 'encounter' : 'encounters'}
+                                  </span>
+                                  <span style={{
+                                    color: "var(--color-text-dim)", fontSize: "13px",
+                                    transform: isDungeonExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                                    transition: "transform 0.2s", display: "inline-block",
+                                  }}>▾</span>
+                                </div>
+                              </div>
+
+                              {/* Expanded encounters */}
+                              {isDungeonExpanded && (
+                                <div style={{
+                                  borderTop: "1px solid var(--color-border)",
+                                  padding: "12px 16px 16px",
+                                  background: "rgba(0,0,0,0.15)",
+                                }}>
+                                  {/* Encounter list */}
+                                  {dungeonEncounters.length > 0 && (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "12px" }}>
+                                      {dungeonEncounters.map(encounter => (
+                                        <div
+                                          key={encounter.id}
+                                          onClick={e => { e.stopPropagation(); router.push(`/encounters/${encounter.id}`); }}
+                                          style={{
+                                            padding: "10px 14px",
+                                            border: "1px solid var(--color-border)",
+                                            background: "var(--color-card)",
+                                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                                            cursor: "pointer", transition: "border-color 0.2s",
+                                          }}
+                                          onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(201,168,76,0.4)"}
+                                          onMouseLeave={e => e.currentTarget.style.borderColor = "var(--color-border)"}
+                                        >
+                                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                            <span style={{ color: "var(--color-text-dim)", fontSize: "11px" }}>✦</span>
+                                            <span style={{ fontSize: "14px", color: "var(--color-text)" }}>{encounter.name}</span>
+                                          </div>
+                                          <span style={{
+                                            fontSize: "10px", letterSpacing: "0.2em", textTransform: "uppercase",
+                                            color: encounter.status === 'completed' ? "var(--color-gold)" : "var(--color-text-dim)",
+                                            padding: "2px 8px",
+                                            border: `1px solid ${encounter.status === 'completed' ? "rgba(201,168,76,0.4)" : "var(--color-border)"}`,
+                                          }}>
+                                            {encounter.status}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                  {/* Add encounter */}
+                                  {addingEncounterTo === dungeon.id ? (
+                                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                                      <input
+                                        value={newEncounterName}
+                                        onChange={e => setNewEncounterName(e.target.value)}
+                                        placeholder="Encounter name..."
+                                        autoFocus
+                                        onKeyDown={e => { if (e.key === 'Enter') handleAddEncounter(dungeon.id); if (e.key === 'Escape') setAddingEncounterTo(null); }}
+                                        style={{ ...inputStyle, flex: 1 }}
+                                        onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
+                                        onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"}
+                                      />
+                                      <button onClick={() => handleAddEncounter(dungeon.id)} disabled={savingEncounter} style={{
+                                        background: "linear-gradient(135deg, var(--color-red), var(--color-red-dark))",
+                                        border: "1px solid var(--color-gold)", color: "var(--color-gold)",
+                                        padding: "10px 14px", fontSize: "11px", letterSpacing: "0.15em",
+                                        textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit",
+                                      }}>
+                                        {savingEncounter ? "..." : "Save"}
+                                      </button>
+                                      <button onClick={() => setAddingEncounterTo(null)} style={{
+                                        background: "transparent", border: "1px solid var(--color-border)",
+                                        color: "var(--color-text-muted)", padding: "10px 14px",
+                                        fontSize: "11px", cursor: "pointer", fontFamily: "inherit",
+                                      }}>
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setAddingEncounterTo(dungeon.id); setNewEncounterName(''); }}
+                                      style={{
+                                        background: "transparent", border: "1px dashed var(--color-border)",
+                                        color: "var(--color-text-dim)", padding: "6px 14px",
+                                        fontSize: "11px", letterSpacing: "0.15em", textTransform: "uppercase",
+                                        cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+                                      }}
+                                      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--color-gold)"; e.currentTarget.style.color = "var(--color-gold)"; }}
+                                      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.color = "var(--color-text-dim)"; }}
+                                    >
+                                      + Add Encounter
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
 
