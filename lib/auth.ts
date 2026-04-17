@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import type { JWTPayload } from 'jose'
 
 const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'dnd-manager-dev-secret-change-in-production'
@@ -13,7 +14,7 @@ export interface SessionPayload {
 }
 
 export async function signToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT(payload as Record<string, string>)
+  return new SignJWT(payload as unknown as JWTPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('30d')
     .sign(SECRET)
