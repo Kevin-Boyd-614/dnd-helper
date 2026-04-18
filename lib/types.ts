@@ -24,6 +24,13 @@ export interface Dungeon {
   order_index: number
 }
 
+export enum PrivacyType
+{
+    Public = 0,
+    Private = 1,
+    Copied = 2
+}
+
 export interface Monster {
   id: string
   name: string
@@ -33,6 +40,7 @@ export interface Monster {
   ac?: number
   speed?: string
   notes?: string
+  privacy?: PrivacyType
 }
 
 export interface MonsterSkill {

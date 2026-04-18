@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Monster, MonsterSkill } from '@/lib/types'
+import { Monster, MonsterSkill, PrivacyType } from '@/lib/types'
 
 import { MONSTER_TYPES, DAMAGE_TYPES } from '@/lib/constants'
 
@@ -43,6 +43,8 @@ export default function EditMonsterClient({ monster, skills: initialSkills }: Pr
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isCopied = monster.privacy === PrivacyType.Copied
+  console.log(monster.privacy)
   const [form, setForm] = useState({
     name: monster.name,
     type: monster.type ?? '',
@@ -50,6 +52,7 @@ export default function EditMonsterClient({ monster, skills: initialSkills }: Pr
     ac: monster.ac?.toString() ?? '',
     speed: monster.speed ?? '',
     notes: monster.notes ?? '',
+    privacy: monster.privacy ?? PrivacyType.Public,
   })
 
   const [skills, setSkills] = useState<MonsterSkill[]>(initialSkills)
@@ -79,6 +82,7 @@ export default function EditMonsterClient({ monster, skills: initialSkills }: Pr
       ac: form.ac ? parseInt(form.ac) : null,
       speed: form.speed.trim() || null,
       notes: form.notes.trim() || null,
+      privacy: form.privacy,
     }).eq('id', monster.id)
 
     if (error) { setError(error.message); setSaving(false); return }
@@ -190,6 +194,27 @@ export default function EditMonsterClient({ monster, skills: initialSkills }: Pr
             onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
             onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"}
           />
+        </div>
+        <div>
+          <label style={labelStyle}>Visibility</label>
+          {isCopied ? (
+            <div style={{
+              ...inputStyle, display: "flex", alignItems: "center", justifyContent: "space-between",
+              color: "var(--color-text-dim)", cursor: "not-allowed", opacity: 0.6,
+            }}>
+              <span>Copied</span>
+              <span style={{ fontSize: "11px", letterSpacing: "0.1em" }}>LOCKED</span>
+            </div>
+          ) : (
+            <select
+              value={form.privacy}
+              onChange={e => setForm(prev => ({ ...prev, privacy: parseInt(e.target.value) as PrivacyType }))}
+              style={{ ...inputStyle, cursor: "pointer", color: "var(--color-text)", background: "var(--color-card)" }}
+            >
+              <option style={{ backgroundColor: "#1a1410" }} value={PrivacyType.Public}>Public</option>
+              <option style={{ backgroundColor: "#1a1410" }} value={PrivacyType.Private}>Private</option>
+            </select>
+          )}
         </div>
       </div>
 

@@ -8,7 +8,7 @@ export default async function EditMonsterPage({ params }: { params: Promise<{ id
 
   const { data: monster } = await supabase
     .from('monsters')
-    .select('id, name, type, hp, ac, speed, notes')
+    .select('id, name, type, hp, ac, speed, notes, privacy')
     .eq('id', id)
     .single()
 

@@ -50,19 +50,34 @@ export default function MonstersClient({ monsters: initial }: Props) {
             Monsters
           </h1>
         </div>
-        <button
-          onClick={() => router.push('/monsters/new')}
-          style={{
-            background: "linear-gradient(135deg, var(--color-red), var(--color-red-dark))",
-            border: "1px solid var(--color-gold)", color: "var(--color-gold)",
-            padding: "12px 28px", fontSize: "12px", letterSpacing: "0.2em",
-            textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.2)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(139,26,26,0.5)"; }}
-          onMouseLeave={e => { e.currentTarget.style.filter = "brightness(1)"; e.currentTarget.style.boxShadow = "none"; }}
-        >
-          + New Monster
-        </button>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            onClick={() => router.push('/monsters/browse')}
+            style={{
+              background: "transparent", border: "1px solid var(--color-border)",
+              color: "var(--color-text-muted)", padding: "12px 28px", fontSize: "12px",
+              letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer",
+              fontFamily: "inherit", transition: "all 0.2s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--color-gold)"; e.currentTarget.style.color = "var(--color-gold)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--color-border)"; e.currentTarget.style.color = "var(--color-text-muted)"; }}
+          >
+            Browse Public
+          </button>
+          <button
+            onClick={() => router.push('/monsters/new')}
+            style={{
+              background: "linear-gradient(135deg, var(--color-red), var(--color-red-dark))",
+              border: "1px solid var(--color-gold)", color: "var(--color-gold)",
+              padding: "12px 28px", fontSize: "12px", letterSpacing: "0.2em",
+              textTransform: "uppercase", cursor: "pointer", fontFamily: "inherit", transition: "all 0.2s",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.2)"; e.currentTarget.style.boxShadow = "0 0 20px rgba(139,26,26,0.5)"; }}
+            onMouseLeave={e => { e.currentTarget.style.filter = "brightness(1)"; e.currentTarget.style.boxShadow = "none"; }}
+          >
+            + New Monster
+          </button>
+        </div>
       </div>
 
       {/* Search + filter bar */}

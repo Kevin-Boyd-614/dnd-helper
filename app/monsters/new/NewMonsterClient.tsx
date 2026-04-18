@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { MonsterSkill } from '@/lib/types'
+import { MonsterSkill, PrivacyType } from '@/lib/types'
 import { MONSTER_TYPES, DAMAGE_TYPES } from '@/lib/constants'
 
 const inputStyle = {
@@ -31,7 +31,7 @@ export default function NewMonsterClient({ userId }: { userId: string }) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState({ name: '', type: '', hp: '', ac: '', speed: '', notes: '' })
+  const [form, setForm] = useState({ name: '', type: '', hp: '', ac: '', speed: '', notes: '', privacy: PrivacyType.Public })
   const [skills, setSkills] = useState<PendingSkill[]>([])
   const [addingSkill, setAddingSkill] = useState(false)
   const [skillForm, setSkillForm] = useState(emptySkillForm)
@@ -77,6 +77,7 @@ export default function NewMonsterClient({ userId }: { userId: string }) {
         ac: form.ac ? parseInt(form.ac) : null,
         speed: form.speed.trim() || null,
         notes: form.notes.trim() || null,
+        privacy: form.privacy,
         user_id: userId,
       })
       .select()
@@ -156,6 +157,17 @@ export default function NewMonsterClient({ userId }: { userId: string }) {
             rows={3} style={{ ...inputStyle, resize: "vertical", height: "auto", minHeight: "80px" }}
             onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
             onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"} />
+        </div>
+        <div>
+          <label style={labelStyle}>Visibility</label>
+          <select
+            value={form.privacy}
+            onChange={e => setForm(prev => ({ ...prev, privacy: parseInt(e.target.value) as PrivacyType }))}
+            style={{ ...inputStyle, cursor: "pointer", color: "var(--color-text)", background: "var(--color-card)" }}
+          >
+            <option style={{ backgroundColor: "#1a1410" }} value={PrivacyType.Public}>Public</option>
+            <option style={{ backgroundColor: "#1a1410" }} value={PrivacyType.Private}>Private</option>
+          </select>
         </div>
       </div>
 
