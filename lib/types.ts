@@ -70,3 +70,11 @@ export interface EncounterMonster {
   initiative: number | null
   monster: Monster
 }
+
+export interface EncounterMonsterAction {
+  id: string
+  encounter_monster_id: string
+  encounter_id: string
+  action: string
+  turn: number
+}

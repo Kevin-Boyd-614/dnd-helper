@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import { Encounter, EncounterMonster, Monster } from '@/lib/types'
+import { Encounter, EncounterMonster, EncounterMonsterAction, Monster, MonsterSkill } from '@/lib/types'
 import { notFound } from 'next/navigation'
 import EncounterClient from './EncounterClient'
 
@@ -35,6 +35,23 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
     .select('id, name, type, cr, hp, ac, speed, notes')
     .order('name', { ascending: true })
 
+  const { data: actions } = await supabase
+    .from('encounter_monster_actions')
+    .select('*')
+    .eq('encounter_id', id)
+    .order('turn', { ascending: true })
+
+  const monsterIds = (encounterMonsters ?? []).map((em: any) => em.monster_id)
+  const { data: monsterSkills } = monsterIds.length > 0
+    ? await supabase.from('monster_skills').select('*').in('monster_id', monsterIds)
+    : { data: [] }
+
+  const skillsByMonsterId = (monsterSkills ?? []).reduce((acc: Record<string, MonsterSkill[]>, s: MonsterSkill) => {
+    if (!acc[s.monster_id]) acc[s.monster_id] = []
+    acc[s.monster_id].push(s)
+    return acc
+  }, {})
+
   return (
     <EncounterClient
       encounter={encounter as Encounter}
@@ -42,6 +59,8 @@ export default async function EncounterPage({ params }: { params: Promise<{ id: 
       campaignId={chapter?.campaign_id ?? null}
       encounterMonsters={(encounterMonsters ?? []) as unknown as EncounterMonster[]}
       allMonsters={(allMonsters ?? []) as Monster[]}
+      initialActions={(actions ?? []) as EncounterMonsterAction[]}
+      monsterSkills={skillsByMonsterId}
     />
   )
 }
