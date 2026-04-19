@@ -112,6 +112,9 @@ export default function LoginPage() {
           Don&apos;t have an account?{" "}
           <a href="/register" style={{ color: "var(--color-gold)", textDecoration: "none" }}>Create one</a>
         </p>
+        <p style={{ textAlign: "center", marginTop: "8px", fontSize: "13px", color: "var(--color-text-dim)" }}>
+          <a href="/forgot-password" style={{ color: "var(--color-gold)", textDecoration: "none" }}>Forgot password?</a>
+        </p>
       </div>
     </div>
   )
