@@ -77,4 +77,7 @@ export interface EncounterMonsterAction {
   encounter_id: string
   action: string
   turn: number
+  monster_skill_id?: string
+  hp_change: number
+  turn_order?: number
 }

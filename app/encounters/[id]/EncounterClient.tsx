@@ -63,7 +63,7 @@ export default function EncounterClient({
   encounterMonsters: initialEncounterMonsters,
   allMonsters,
   initialActions,
-  monsterSkills,
+  monsterSkills: initialMonsterSkills,
 }: Props) {
   const router = useRouter()
 
@@ -76,6 +76,7 @@ export default function EncounterClient({
   const [deleting, setDeleting] = useState(false)
 
   const [encounterMonsters, setEncounterMonsters] = useState(initialEncounterMonsters)
+  const [monsterSkills, setMonsterSkills] = useState<Record<string, MonsterSkill[]>>(initialMonsterSkills)
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [crFilter, setCrFilter] = useState('')
@@ -92,7 +93,23 @@ export default function EncounterClient({
   )
   const [savingActions, setSavingActions] = useState(false)
   const [showLog, setShowLog] = useState(true)
-  const [skillCooldowns, setSkillCooldowns] = useState<Record<string, number>>({})
+  const [editingActionId, setEditingActionId] = useState<string | null>(null)
+  const [editingActionText, setEditingActionText] = useState('')
+  const [pendingSkillIds, setPendingSkillIds] = useState<Record<string, string>>({})
+  const [roundStartHp, setRoundStartHp] = useState<Record<string, number>>(
+    Object.fromEntries(initialEncounterMonsters.map(em => [em.id, em.current_hp]))
+  )
+
+  const [skillCooldowns, setSkillCooldowns] = useState<Record<string, number>>(() => {
+    const cooldowns: Record<string, number> = {}
+    for (const action of initialActions) {
+      if (action.monster_skill_id) {
+        const key = `${action.encounter_monster_id}_${action.monster_skill_id}`
+        if (!cooldowns[key] || action.turn > cooldowns[key]) cooldowns[key] = action.turn
+      }
+    }
+    return cooldowns
+  })
 
   const availableTypes = [...new Set(allMonsters.map(m => m.type).filter(Boolean) as string[])].sort()
   const availableCRs = [...new Set(allMonsters.map(m => m.cr).filter(Boolean) as string[])].sort((a, b) => crToNum(a) - crToNum(b))
@@ -113,6 +130,10 @@ export default function EncounterClient({
     if (data) {
       setEncounterMonsters(prev => [...prev, data as unknown as EncounterMonster])
       setHpValues(prev => ({ ...prev, [(data as { id: string }).id]: (data as { current_hp: number }).current_hp }))
+      if (!monsterSkills[monster.id]) {
+        const { data: skills } = await supabase.from('monster_skills').select('*').eq('monster_id', monster.id)
+        if (skills) setMonsterSkills(prev => ({ ...prev, [monster.id]: skills as MonsterSkill[] }))
+      }
     }
     setSearchQuery('')
   }
@@ -161,30 +182,44 @@ export default function EncounterClient({
   }
 
   async function handleNextRound() {
-    const toSave = Object.entries(actionInputs).filter(([, action]) => action.trim())
-    if (toSave.length > 0) {
+    if (encounterMonsters.length > 0) {
       setSavingActions(true)
-      const rows = toSave.map(([encounter_monster_id, action]) => ({
-        encounter_monster_id,
+      const rows = encounterMonsters.map(em => ({
+        encounter_monster_id: em.id,
         encounter_id: encounter.id,
-        action: action.trim(),
+        action: actionInputs[em.id]?.trim() || 'Did Nothing',
         turn: currentTurn,
+        monster_skill_id: pendingSkillIds[em.id] ?? null,
+        hp_change: (hpValues[em.id] ?? 0) - (roundStartHp[em.id] ?? 0),
+        turn_order: em.initiative ?? 0,
       }))
       const { data } = await supabase.from('encounter_monster_actions').insert(rows).select()
       if (data) setActions(prev => [...prev, ...(data as EncounterMonsterAction[])])
       setSavingActions(false)
     }
+    setRoundStartHp({ ...hpValues })
     setActionInputs({})
+    setPendingSkillIds({})
     setCurrentTurn(prev => prev + 1)
   }
 
+  async function handleSaveActionEdit(id: string) {
+    const trimmed = editingActionText.trim()
+    if (!trimmed) return
+    await supabase.from('encounter_monster_actions').update({ action: trimmed }).eq('id', id)
+    setActions(prev => prev.map(a => a.id === id ? { ...a, action: trimmed } : a))
+    setEditingActionId(null)
+  }
+
+  async function handleDeleteAction(id: string) {
+    await supabase.from('encounter_monster_actions').delete().eq('id', id)
+    setActions(prev => prev.filter(a => a.id !== id))
+  }
+
   function handleUseSkill(em: EncounterMonster, skill: MonsterSkill) {
-    const key = `${em.id}_${skill.id}`
-    setSkillCooldowns(prev => ({ ...prev, [key]: currentTurn }))
-    setActionInputs(prev => ({
-      ...prev,
-      [em.id]: prev[em.id]?.trim() ? `${prev[em.id]}, ${skill.name}` : skill.name,
-    }))
+    setSkillCooldowns(prev => ({ ...prev, [`${em.id}_${skill.id}`]: currentTurn }))
+    setActionInputs(prev => ({ ...prev, [em.id]: skill.name }))
+    setPendingSkillIds(prev => ({ ...prev, [em.id]: skill.id }))
   }
 
   function getSkillCooldownRemaining(emId: string, skill: MonsterSkill): number {
@@ -634,7 +669,7 @@ export default function EncounterClient({
                         return (
                           <button
                             key={skill.id}
-                            onClick={() => !onCooldown && handleUseSkill(em, skill)}
+                            onClick={() => { if (!onCooldown) handleUseSkill(em, skill) }}
                             disabled={onCooldown}
                             title={skill.description ?? skill.name}
                             style={{
@@ -687,18 +722,64 @@ export default function EncounterClient({
                       Round {turn}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      {turnActions.map(a => {
+                      {[...turnActions].sort((a, b) => (b.turn_order ?? 0) - (a.turn_order ?? 0)).map(a => {
                         const em = encounterMonsters.find(m => m.id === a.encounter_monster_id)
+                        const isEditing = editingActionId === a.id
                         return (
                           <div key={a.id} style={{
                             padding: "8px 14px", background: "var(--color-card)",
-                            border: "1px solid var(--color-border)", fontSize: "13px",
-                            display: "flex", gap: "12px",
+                            border: `1px solid ${isEditing ? "rgba(201,168,76,0.4)" : "var(--color-border)"}`,
+                            fontSize: "13px", display: "flex", gap: "12px", alignItems: "center",
                           }}>
-                            <span style={{ color: "var(--color-text-dim)", minWidth: "120px", fontSize: "12px" }}>
+                            <span style={{ color: "var(--color-text-dim)", minWidth: "120px", fontSize: "12px", flexShrink: 0 }}>
                               {em?.monster?.name ?? '—'}
                             </span>
-                            <span style={{ color: "var(--color-text-muted)" }}>{a.action}</span>
+                            {isEditing ? (
+                              <>
+                                <input
+                                  value={editingActionText}
+                                  onChange={e => setEditingActionText(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') handleSaveActionEdit(a.id); if (e.key === 'Escape') setEditingActionId(null) }}
+                                  autoFocus
+                                  style={{ ...inputStyle, flex: 1, fontSize: "13px", height: "32px", padding: "4px 10px" }}
+                                  onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
+                                  onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"}
+                                />
+                                <button onClick={() => handleSaveActionEdit(a.id)} style={{
+                                  background: "transparent", border: "1px solid rgba(201,168,76,0.4)", color: "var(--color-gold)",
+                                  padding: "3px 10px", fontSize: "10px", letterSpacing: "0.1em", cursor: "pointer", fontFamily: "inherit",
+                                }}>Save</button>
+                                <button onClick={() => setEditingActionId(null)} style={{
+                                  background: "transparent", border: "none", color: "var(--color-text-dim)",
+                                  cursor: "pointer", fontSize: "14px", padding: "2px 4px", fontFamily: "inherit",
+                                }}>✕</button>
+                              </>
+                            ) : (
+                              <>
+                                <span style={{
+                                  fontSize: "11px", fontWeight: "bold", whiteSpace: "nowrap" as const,
+                                  color: a.hp_change > 0 ? "#4caf50" : a.hp_change < 0 ? "#c04040" : "var(--color-text-dim)",
+                                  minWidth: "48px",
+                                }}>
+                                  {a.hp_change > 0 ? `+${a.hp_change}` : a.hp_change} HP
+                                </span>
+                                <span style={{ color: "var(--color-text-muted)", flex: 1 }}>{a.action}</span>
+                                <button onClick={() => { setEditingActionId(a.id); setEditingActionText(a.action) }} style={{
+                                  background: "transparent", border: "none", color: "var(--color-text-dim)",
+                                  cursor: "pointer", fontSize: "13px", padding: "2px 4px", fontFamily: "inherit",
+                                }}
+                                  onMouseEnter={e => e.currentTarget.style.color = "var(--color-gold)"}
+                                  onMouseLeave={e => e.currentTarget.style.color = "var(--color-text-dim)"}
+                                >✎</button>
+                                <button onClick={() => handleDeleteAction(a.id)} style={{
+                                  background: "transparent", border: "none", color: "var(--color-text-dim)",
+                                  cursor: "pointer", fontSize: "13px", padding: "2px 4px", fontFamily: "inherit",
+                                }}
+                                  onMouseEnter={e => e.currentTarget.style.color = "#c04040"}
+                                  onMouseLeave={e => e.currentTarget.style.color = "var(--color-text-dim)"}
+                                >✕</button>
+                              </>
+                            )}
                           </div>
                         )
                       })}
@@ -775,18 +856,64 @@ export default function EncounterClient({
                       Round {turn}
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      {turnActions.map(a => {
+                      {[...turnActions].sort((a, b) => (b.turn_order ?? 0) - (a.turn_order ?? 0)).map(a => {
                         const em = encounterMonsters.find(m => m.id === a.encounter_monster_id)
+                        const isEditing = editingActionId === a.id
                         return (
                           <div key={a.id} style={{
                             padding: "8px 14px", background: "var(--color-card)",
-                            border: "1px solid var(--color-border)", fontSize: "13px",
-                            display: "flex", gap: "12px",
+                            border: `1px solid ${isEditing ? "rgba(201,168,76,0.4)" : "var(--color-border)"}`,
+                            fontSize: "13px", display: "flex", gap: "12px", alignItems: "center",
                           }}>
-                            <span style={{ color: "var(--color-text-dim)", minWidth: "120px", fontSize: "12px" }}>
+                            <span style={{ color: "var(--color-text-dim)", minWidth: "120px", fontSize: "12px", flexShrink: 0 }}>
                               {em?.monster?.name ?? '—'}
                             </span>
-                            <span style={{ color: "var(--color-text-muted)" }}>{a.action}</span>
+                            {isEditing ? (
+                              <>
+                                <input
+                                  value={editingActionText}
+                                  onChange={e => setEditingActionText(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') handleSaveActionEdit(a.id); if (e.key === 'Escape') setEditingActionId(null) }}
+                                  autoFocus
+                                  style={{ ...inputStyle, flex: 1, fontSize: "13px", height: "32px", padding: "4px 10px" }}
+                                  onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
+                                  onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"}
+                                />
+                                <button onClick={() => handleSaveActionEdit(a.id)} style={{
+                                  background: "transparent", border: "1px solid rgba(201,168,76,0.4)", color: "var(--color-gold)",
+                                  padding: "3px 10px", fontSize: "10px", letterSpacing: "0.1em", cursor: "pointer", fontFamily: "inherit",
+                                }}>Save</button>
+                                <button onClick={() => setEditingActionId(null)} style={{
+                                  background: "transparent", border: "none", color: "var(--color-text-dim)",
+                                  cursor: "pointer", fontSize: "14px", padding: "2px 4px", fontFamily: "inherit",
+                                }}>✕</button>
+                              </>
+                            ) : (
+                              <>
+                                <span style={{
+                                  fontSize: "11px", fontWeight: "bold", whiteSpace: "nowrap" as const,
+                                  color: a.hp_change > 0 ? "#4caf50" : a.hp_change < 0 ? "#c04040" : "var(--color-text-dim)",
+                                  minWidth: "48px",
+                                }}>
+                                  {a.hp_change > 0 ? `+${a.hp_change}` : a.hp_change} HP
+                                </span>
+                                <span style={{ color: "var(--color-text-muted)", flex: 1 }}>{a.action}</span>
+                                <button onClick={() => { setEditingActionId(a.id); setEditingActionText(a.action) }} style={{
+                                  background: "transparent", border: "none", color: "var(--color-text-dim)",
+                                  cursor: "pointer", fontSize: "13px", padding: "2px 4px", fontFamily: "inherit",
+                                }}
+                                  onMouseEnter={e => e.currentTarget.style.color = "var(--color-gold)"}
+                                  onMouseLeave={e => e.currentTarget.style.color = "var(--color-text-dim)"}
+                                >✎</button>
+                                <button onClick={() => handleDeleteAction(a.id)} style={{
+                                  background: "transparent", border: "none", color: "var(--color-text-dim)",
+                                  cursor: "pointer", fontSize: "13px", padding: "2px 4px", fontFamily: "inherit",
+                                }}
+                                  onMouseEnter={e => e.currentTarget.style.color = "#c04040"}
+                                  onMouseLeave={e => e.currentTarget.style.color = "var(--color-text-dim)"}
+                                >✕</button>
+                              </>
+                            )}
                           </div>
                         )
                       })}
