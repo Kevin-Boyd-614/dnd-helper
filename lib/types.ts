@@ -4,7 +4,7 @@ export interface Campaign {
   setting?: string
   description?: string
   player_count?: number
-  chapterCount: number
+  chapterCount?: number
   created_at: string
   privacy?: PrivacyType
 }
