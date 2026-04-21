@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { PrivacyType } from '@/lib/types'
 
 const inputStyle = {
   width: "100%",
@@ -30,7 +31,7 @@ export default function NewCampaignClient({ userId }: { userId: string }) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState({ name: '', setting: '', description: '', player_count: '' })
+  const [form, setForm] = useState({ name: '', setting: '', description: '', player_count: '', privacy: PrivacyType.Public })
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -46,6 +47,7 @@ export default function NewCampaignClient({ userId }: { userId: string }) {
       setting: form.setting.trim() || null,
       description: form.description.trim() || null,
       player_count: form.player_count ? parseInt(form.player_count) : null,
+      privacy: form.privacy,
       user_id: userId,
     })
 
@@ -94,6 +96,25 @@ export default function NewCampaignClient({ userId }: { userId: string }) {
             onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
             onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"} />
         </div>
+        <div>
+          <label style={labelStyle}>Visibility</label>
+          <select
+            value={form.privacy}
+            onChange={e => setForm(prev => ({ ...prev, privacy: parseInt(e.target.value) as PrivacyType }))}
+            style={{
+              background: "var(--color-card)", border: "1px solid var(--color-border)",
+              color: "var(--color-text)", padding: "12px 16px", fontSize: "15px",
+              fontFamily: "inherit", outline: "none", cursor: "pointer",
+              appearance: "none" as const, width: "200px",
+            }}
+            onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
+            onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"}
+          >
+            <option value={PrivacyType.Public}>Public</option>
+            <option value={PrivacyType.Private}>Private</option>
+          </select>
+        </div>
+
         <div>
           <label style={labelStyle}>Number of Players</label>
           <input name="player_count" type="number" min="1" max="20" value={form.player_count} onChange={handleChange} placeholder="e.g. 4"

@@ -6,6 +6,7 @@ export interface Campaign {
   player_count?: number
   chapterCount: number
   created_at: string
+  privacy?: PrivacyType
 }
 
 export interface Chapter {

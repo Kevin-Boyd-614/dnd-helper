@@ -3,14 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-
-interface Campaign {
-  id: string
-  name: string
-  setting?: string
-  description?: string
-  player_count?: number
-}
+import { Campaign, PrivacyType } from '@/lib/types'
 
 const inputStyle = {
   width: "100%",
@@ -38,11 +31,13 @@ export default function EditCampaignClient({ campaign }: { campaign: Campaign })
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isCopied = campaign.privacy === PrivacyType.Copied
   const [form, setForm] = useState({
     name: campaign.name,
     setting: campaign.setting ?? '',
     description: campaign.description ?? '',
     player_count: campaign.player_count?.toString() ?? '',
+    privacy: campaign.privacy ?? PrivacyType.Private,
   })
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -64,6 +59,7 @@ export default function EditCampaignClient({ campaign }: { campaign: Campaign })
         setting: form.setting.trim() || null,
         description: form.description.trim() || null,
         player_count: form.player_count ? parseInt(form.player_count) : null,
+        privacy: form.privacy,
       })
       .eq('id', campaign.id)
 
@@ -145,6 +141,35 @@ export default function EditCampaignClient({ campaign }: { campaign: Campaign })
             onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
             onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"}
           />
+        </div>
+
+        <div>
+          <label style={labelStyle}>Visibility</label>
+          {isCopied ? (
+            <div style={{
+              background: "var(--color-card)", border: "1px solid var(--color-border)",
+              color: "var(--color-text-dim)", padding: "12px 16px", fontSize: "15px",
+              width: "200px", boxSizing: "border-box" as const,
+            }}>
+              Copied — LOCKED
+            </div>
+          ) : (
+            <select
+              value={form.privacy}
+              onChange={e => setForm(prev => ({ ...prev, privacy: parseInt(e.target.value) as PrivacyType }))}
+              style={{
+                background: "var(--color-card)", border: "1px solid var(--color-border)",
+                color: "var(--color-text)", padding: "12px 16px", fontSize: "15px",
+                fontFamily: "inherit", outline: "none", cursor: "pointer",
+                appearance: "none" as const, width: "200px",
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = "var(--color-gold)"}
+              onBlur={e => e.currentTarget.style.borderColor = "var(--color-border)"}
+            >
+              <option value={PrivacyType.Public}>Public</option>
+              <option value={PrivacyType.Private}>Private</option>
+            </select>
+          )}
         </div>
 
         <div>

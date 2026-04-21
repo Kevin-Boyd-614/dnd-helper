@@ -7,7 +7,7 @@ export default async function EditCampaignPage({ params }: { params: Promise<{ i
 
   const { data: campaign } = await supabase
     .from('campaigns')
-    .select('id, name, setting, description, player_count')
+    .select('id, name, setting, description, player_count, privacy')
     .eq('id', id)
     .single()
 
