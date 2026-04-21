@@ -1,15 +1,18 @@
 import { supabase } from '@/lib/supabase'
-import { Campaign, Chapter, Dungeon, Encounter } from '@/lib/types'
+import { Campaign, Chapter, Dungeon, Encounter, PrivacyType } from '@/lib/types'
 import CampaignClient from './CampaignClient'
 import { notFound } from 'next/navigation'
+import { getSession } from '@/lib/auth'
 
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const session = await getSession()
 
   const { data: campaign } = await supabase
     .from('campaigns')
     .select('id, name, setting, description, player_count, created_at')
     .eq('id', id)
+    .or(`user_id.eq.${session!.userId},privacy.eq.${PrivacyType.Public}`)
     .single()
 
   if (!campaign) notFound()

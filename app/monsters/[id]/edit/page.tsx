@@ -2,14 +2,17 @@ import { supabase } from '@/lib/supabase'
 import { Monster, MonsterSkill } from '@/lib/types'
 import EditMonsterClient from './EditMonsterClient'
 import { notFound } from 'next/navigation'
+import { getSession } from '@/lib/auth'
 
 export default async function EditMonsterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const session = await getSession()
 
   const { data: monster } = await supabase
     .from('monsters')
     .select('id, name, type, hp, ac, speed, notes, privacy')
     .eq('id', id)
+    .eq('user_id', session!.userId)
     .single()
 
   if (!monster) notFound()

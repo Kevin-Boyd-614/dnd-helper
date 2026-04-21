@@ -2,16 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 import { supabase } from '@/lib/supabase'
 
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
-}
-
 function generateToken(): string {
   return crypto.randomUUID()
 }
 
 export async function POST(request: NextRequest) {
-  const { email } = await request.json()
+  const { email, otp } = await request.json()
 
   if (!email?.trim()) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -28,7 +24,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   }
 
-  const otp = generateOtp()
   const token = generateToken()
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
 
@@ -70,5 +65,5 @@ export async function POST(request: NextRequest) {
     `,
   })
 
-  return NextResponse.json({ success: true, otp })
+  return NextResponse.json({ success: true })
 }

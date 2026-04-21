@@ -25,6 +25,10 @@ const labelStyle = {
   marginBottom: "6px",
 }
 
+function generateOtp(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
 export default function ForgotPasswordPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -37,10 +41,12 @@ export default function ForgotPasswordPage() {
     setLoading(true)
     setError('')
 
+    const clientOtp = generateOtp()
+
     const res = await fetch('/api/auth/forgot-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, otp: clientOtp }),
     })
     const data = await res.json()
 
@@ -50,8 +56,8 @@ export default function ForgotPasswordPage() {
       return
     }
 
-    // otp may be undefined if the email wasn't found (we still show success to avoid enumeration)
-    setOtp(data.otp ?? null)
+    // Show OTP from local state only — never from the server response
+    if (data.success) setOtp(clientOtp)
     setLoading(false)
   }
 
